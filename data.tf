@@ -16,21 +16,11 @@ data "aws_ami" "webapp_ami" {
 }
 
 # Gather default subnet IDs
-data "aws_subnets" "default" {
+data "aws_subnet" "default" {
   vpc_id = data.aws_vpc.default.id
 }
 
 # Gather default VPC's ID
 data "aws_vpc" "default" {
   default = true
-}
-
-# Data to point downloading correct secrets by choosing the secret name in AWS Secret Manager 
-data "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = var.secret_name
-}
-
-# SSH key to access instance
-data "aws_key_pair" "key" {
-  key_name = "terraform"
 }

@@ -17,22 +17,28 @@ resource "aws_lb_target_group" "webapp_tg" {
 
 # Choose load balancer type application (ALB)
 resource "aws_lb" "webapp_lb" {
-  name               = "webapp_lb"
+  name               = "webapp-lb"
   load_balancer_type = "application"
+  subnets            = aws_security_group.webapp_sg.id
+}
 
-  # Map to first available subnet
-  subnet_mapping {
-    subnet_id = data.aws_subnet_ids.default.ids[0]
+# Listen on 80 (HTTP) and forward to the target group
+
+resource "aws_lb_listener" "alb_listener" {
+  depends_on        = [aws_lb.webapp_lb, aws_lb_target_group.webapp_tg]
+  load_balancer_arn = aws_lb.webapp_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.webapp_tg.arn
   }
-
-  # Listen on 80 (HTTP) and forward to the target group
-  listener {
-    port     = 80
-    protocol = "HTTP"
-
-    default_action {
-      type             = "forward"
-      target_group_arn = aws_lb_target_group.webapp_tg.arn
-    }
-  }
+}
+#Attach target group to ASG
+resource "aws_lb_target_group_attachment" "alb_target_group_attachment" {
+  depends_on       = [aws_lb_target_group.webapp_tg, aws_autoscaling_group.webapp_asg]
+  target_group_arn = aws_lb_target_group.webapp_tg.arn
+  port             = 80
+  target_id        = aws_autoscaling_group.webapp_asg.id
 }

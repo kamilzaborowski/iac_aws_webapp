@@ -1,26 +1,28 @@
-# ASG settings for web application servers
+# ASG settings for web application servers, min 1 instance, max 5
 resource "aws_autoscaling_group" "webapp_asg" {
-  name                 = "webapp_asg"
+  name                 = "webapp-asg"
   launch_configuration = aws_launch_configuration.webapp_lc.name
-  vpc_zone_identifier  = [data.aws_subnet_ids.default.ids[0]]
+  vpc_zone_identifier  = [aws_security_group.webapp_sg.id]
   target_group_arns    = [aws_lb_target_group.webapp_tg.arn]
-
-  dynamic_scaling_policy_configuration {
-    target_value           = 500 # MB of RAM usage per instance
-    predefined_metric_type = PredefinedMetricSpecification.MemoryUtilization #pointing target_value to memory
-
-    # When threshold is exceeded, scale out by 1 instance and wait 60 seconds before the action (cooldown)
-    # Similar for scaling in, when threshold is satisfying, terminating 1 instance after 60 sec of cooldown
-    scale_in_cooldown  = 60
-    scale_out_cooldown = 60
-    scaling_adjustment = 1
-
-    # Min and max capacity
-    min_capacity = 1
-    max_capacity = 5
-  }
+  min_size             = 1
+  max_size             = 5
 }
 
+resource "aws_autoscaling_policy" "webapp_asg_policy" {
+  name                   = "webapp-asg-policy"
+  scaling_adjustment     = 1
+  adjustment_type        = "TargetTrackingScaling"
+  cooldown               = 60
+  autoscaling_group_name = aws_autoscaling_group.webapp_asg.name
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value = 70.0
+  }
+}
 # Launch configuration for every new instance in ASG
 resource "aws_launch_configuration" "webapp_lc" {
   name          = "webapp_lc"
@@ -31,14 +33,11 @@ resource "aws_launch_configuration" "webapp_lc" {
   user_data = <<-EOF
                   #!/bin/bash
                   sudo yum update -y
-                  sudo yum install -y httpd
-                  aws s3 cp s3://kamil-zaborowski-s3/webapp /var/www/html
+                  sudo yum install -y httpd git
+                  git clone https://github.com/kamilzaborowski/iac_aws_webapp
+                  cp -R /iac_aws_webapp/ /var/www/html
+                  rm -R iac_aws_webapp --force
                   sudo systemctl start httpd
                   sudo systemctl enable httpd
-                  echo "<h1>Welcome to the web application</h1>" > /var/www/html/index.html
-                  echo "<p>Instance ID: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)</p>" >> /var/www/html/index.html
-                  echo "<p>Instance Type: $(curl -s http://169.254.169.254/latest/meta-data/instance-type)</p>" >> /var/www/html/index.html
-                  echo "<p>Database Name: ${var.db_name}</p>" >> /var/www/html/index.html
-                  echo "<p>Database Endpoint: ${aws_db_instance.db_instance.endpoint}</p>" >> /var/www/html/index.html
                   EOF
 }

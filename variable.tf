@@ -5,10 +5,14 @@ variable "region" {
 
 # Database name
 variable "db_name" {
-  default = "webapp_db"
+  default = "db"
 }
 
 # Secret's name in AWS Secret Manager
-variable "secret_name" {
-  default = "db_credentials"
+variable "db_user" {
+  default = "root"
+}
+
+variable "db_pass" {
+  sensitive = true
 }

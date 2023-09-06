@@ -3,20 +3,30 @@
 <left><table class="tg">
 <tbody>
   <tr>
+    <td class="tg-0pky"><center><b>CI/CD</b></center></td>
+    <td class="tg-0pky"><center><b>Jenkins</b></td>
+    <td class="tg-0pky"><center><b>Version 2.41.1</b></center></td>
+  </tr>
+  <tr>
     <td class="tg-0pky"><center><b>Cloud</b></center></td>
     <td class="tg-0pky"><center><b>AWS</b></td>
+    <td class="tg-0pky"><center><b></b></center></td>
   </tr>
   <tr>
     <td class="tg-0pky"><center><b>Infrastructure as Code</b></center></td>
     <td class="tg-0pky"><center><b>Terraform</b></center></td>
+    <td class="tg-0pky"><center><b>AWS provider 5.15.x</b></center></td>
   </tr>
   <tr>
     <td class="tg-0pky"><center><b>AWS instance</b></center></td>
     <td class="tg-0pky"><center><b>Amazon Linux 2, t2.micro instance type</b></center></td>
+    <td class="tg-0pky"><center><b>Auto Scaling Group</b></center></td>
+    
   </tr>
   <tr>
-    <td class="tg-0pky"><center><b>Database server</b></center></td>
+    <td class="tg-0pky"><center><b>MySQL database server</b></center></td>
     <td class="tg-0pky"><center><b>Amazon RDS instance, db.t2.micro instance type</b></center></td>
+    <td class="tg-0pky"><center><b>Allocated storage and max allocated storage set</b></center></td>
   </tr>
 </tbody>
 </table></left>
@@ -28,8 +38,8 @@ What differs from the web application servers, database storage will be scaled u
 
 Application server(s) will access database server with 3306 port to communicate with the MySQL DB itself
 
-Database credentials are gathered from AWS Secret Manager.
-DNS name for Application Load Balancer
+Database credentials are gathered from Jenkins credential store, variable passed into the terraform apply -var $var...<br>
+DNS name for Application Load Balancer will be taken from output after creation<br>
 
 <h2> How will you achieve version control for your coding ? </h2>
 
@@ -45,6 +55,21 @@ This is the best choice for the most demanding development, according to officia
 
 Second problem is to choose the way the web application is going to be deployed.<br>
 The task was meant to host the web application in scalable deployment, using application and database servers.
-I decided to plan the infrastructure to deploy, which I host on GitHub (<a href="https://github.com/kamilzaborowski/webapp">WebApp</a>).<br>
-The code is meant to be deployed from S3 bucket directly to the 
+I decided to plan the infrastructure to deploy web application, hosted on my another GitHub repo (<a href="https://github.com/kamilzaborowski/webapp">WebApp</a>).<br>
 
+Next, Amazon RDS is not able to create database on the start. To do so, we can open route outside of VPC to the machine and execute SQL query <br>
+But the task disallow it and the only way is to access it internally. My idea is to provision single instance with mysql client installed to proceed with the SQL query execution.<br>
+After this process, machine is meant to be destroyed.<br>
+
+This idea helped me to solve case number 4. What should be the order of instances ?<br>
+The order is:<br>
+<b>- Database instance with all dependencies, with 3306 port opened</b><br>
+<b>- EC2 instance to execute the SQL query with 3306 port </b><br>
+<b>- Auto Scaling Group EC2 instance(s), performing CRUD operations to database</b><br>
+
+The last challenge was to choose CI/CD tool to automate the deployment process<br>
+It is safe to store credentials in on-premise server or special vault, like AWS Secret Manager.<br>
+I decided to choose Jenkins. It is quite old tool written in Java, with special Groovy language,<br>
+which helps in versioning of the whole deployment in Git. Whole file is available in this repository<br>
+Its main task is to perform SCM poll every 5 min (scheduled with crontab) and execute the code <br>
+pulled from git repository, when new version of code will appear in main branch.<br>
