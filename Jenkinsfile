@@ -1,94 +1,51 @@
-def backendDockerTag=""
-def frontendDockerTag=""
-def frontendImage="kamilzaborowski/frontend"
-def backendImage="kamilzaborowski/backend"
-def dockerRegistry=""
-def registryCredentials="Dockerhub"
-
-withCredentials([usernamePassword(credentialsId: 'db_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-  sh 'cf login some.awesome.url -u $USERNAME -p $PASSWORD'
-
-}
-
 pipeline {
     agent {
         label 'agent'
     }
-
+// Trigger every 5 minute for code change
     triggers {
-           cron('H/5 * * * * ')
+        cron('H/5 * * * * ')
 
     tools {
         terraform 'Terraform'
     }
 
-     parameters {
-        string(name: 'backendDockerTag', defaultValue: '', description: 'Backend docker image tag')
-        string(name: 'frontendDockerTag', defaultValue: '', description: 'Frontend docker image tag')
-    }
-
+// Check SCM for the code
     stages {
         stage('Get code') {
             steps {
                 checkout scm
             }
         }
-
-        stage('Adjust version') {
+// Get the code from the main branch and execute terraform commands
+        stage('Deploy infrastrucure from Terraform code') {
             steps {
-                script {
-                    backendDockerTag = params.backendDockerTag.isEmpty() ? "latest" : params.backendDockerTag
-                    frontendDockerTag = params.frontendDockerTag.isEmpty() ? "latest" : params.frontendDockerTag
-                    currentBuild.description = "Backend: ${backendDockerTag}, Frontend: ${frontendDockerTag}"
-                }
-            }
-        }
-
-        stage('Deploy application') {
-            steps {
-                script {
-                    withEnv(["FRONTEND_IMAGE=$frontendImage:$frontendDockerTag","BACKEND_IMAGE=$backendImage:$backendDockerTag"]) {
-                        docker.withRegistry("$dockerRegistry","$registryCredentials") {
-                            sh "docker-compose up -d"
-                        }
+                dir('iac_aws_webapp') {
+                    // Get database credentials from Jenkins and assign to TF_VARS
+                    withCredentials([usernamePassword(credentialsId: 'db_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                        sh 'export TF_VAR_USER=$USERNAME
+                        sh 'export TF_VAR_PASS=$PASSWORD'
                     }
-                }
-            }
-        }
-
-        stage('Selenium tests') {
-            steps {
-                sh "pip3 install -r test/selenium/requirements.txt"
-                sh "python3 -m pytest test/selenium/frontendTest.py"
-            }
-        }
-
-        stage('Run terraform') {
-            steps {
-                dir('Terraform') {
-                    git branch: 'main', url: 'https://github.com/kamilzaborowski/Terraform'
+                    git branch: 'main', url: 'https://github.com/kamilzaborowski/iac_aws_webapp'
                     withAWS(credentials:'AWS',region: 'us-east-1') {
-                        sh 'terraform init && terraform apply -auto-approve -var-file="terraform.tfvars"'
+                        sh 'terraform init && terraform apply -auto-approve -var db_name=webapp_db -var db_user=$TF_VAR_USER -var db_pass=$TF_VAR_PASS
                     }
                 }
             }
         }
-
-        stage('Destroy temporary EC2') {
+// Deploy last terraform command to destroy EC2 instance
+        stage('Destroy temporary EC2 instance') {
             steps {
-                dir('Terraform') {
-                    git branch: 'main', url: 'https://github.com/kamilzaborowski/Terraform'
+                dir('iac_aws_webapp') {
                     withAWS(credentials:'AWS',region: 'us-east-1') {
-                        sh 'terraform init && terraform apply -auto-approve -var-file="terraform.tfvars"'
+                        sh 'terraform destroy -auto-approve -target aws_instance.server
                     }
                 }
             }
         }
-
+// After pipeline execution, do the workspace cleanup
     post {
         always {
-            withEnv(["FRONTEND_IMAGE=$frontendImage:$frontendDockerTag","BACKEND_IMAGE=$backendImage:$backendDockerTag"]) {
-                sh "docker-compose down"
                 cleanWs()
             }
         }

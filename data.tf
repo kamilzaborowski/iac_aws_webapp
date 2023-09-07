@@ -15,10 +15,12 @@ data "aws_ami" "webapp_ami" {
   owners = ["amazon"]
 }
 
-# Gather default subnet IDs
-data "aws_subnet" "default" {
-  vpc_id = data.aws_vpc.default.id
-}
+# Default subnet IDs
+#resource "aws_subnet" "default" {
+#  vpc_id     = data.aws_vpc.default.id
+#  cidr_block = data.aws_vpc.default.cidr_block
+
+#}
 
 # Gather default VPC's ID
 data "aws_vpc" "default" {

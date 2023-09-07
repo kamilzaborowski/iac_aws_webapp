@@ -68,8 +68,9 @@ The order is:<br>
 <b>- Auto Scaling Group EC2 instance(s), performing CRUD operations to database</b><br>
 
 The last challenge was to choose CI/CD tool to automate the deployment process<br>
-It is safe to store credentials in on-premise server or special vault, like AWS Secret Manager.<br>
+It is safe to store credentials in on-premise server or vault, like AWS Secret Manager provided with Amazon's cloud.<br>
 I decided to choose Jenkins. It is quite old tool written in Java, with special Groovy language,<br>
-which helps in versioning of the whole deployment in Git. Whole file is available in this repository<br>
+but still developed with great plugins still written and managed.<br>
+Jenkins helps in versioning of the whole deployment in Git. Whole file is available in this repository<br>
 Its main task is to perform SCM poll every 5 min (scheduled with crontab) and execute the code <br>
 pulled from git repository, when new version of code will appear in main branch.<br>

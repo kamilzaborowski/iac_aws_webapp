@@ -1,13 +1,15 @@
 # ASG settings for web application servers, min 1 instance, max 5
 resource "aws_autoscaling_group" "webapp_asg" {
+  depends_on           = [aws_db_instance.db_instance, aws_instance.server]
   name                 = "webapp-asg"
   launch_configuration = aws_launch_configuration.webapp_lc.name
-  vpc_zone_identifier  = [aws_security_group.webapp_sg.id]
+  vpc_zone_identifier  = [aws_security_group.webapp_sg.id, aws_security_group.db_sg.id]
   target_group_arns    = [aws_lb_target_group.webapp_tg.arn]
   min_size             = 1
   max_size             = 5
 }
 
+# ASG policy (scale in/out by 1 instance, wait 60 sec before action...)
 resource "aws_autoscaling_policy" "webapp_asg_policy" {
   name                   = "webapp-asg-policy"
   scaling_adjustment     = 1
@@ -15,6 +17,7 @@ resource "aws_autoscaling_policy" "webapp_asg_policy" {
   cooldown               = 60
   autoscaling_group_name = aws_autoscaling_group.webapp_asg.name
 
+  # ...when average CPU utilization will reach 70 %
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"

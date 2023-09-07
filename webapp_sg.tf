@@ -1,4 +1,4 @@
-# Create SG for web app
+# Create SG for web app, used for ASG
 resource "aws_security_group" "webapp_sg" {
   name = "webapp_sg"
 

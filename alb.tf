@@ -19,7 +19,7 @@ resource "aws_lb_target_group" "webapp_tg" {
 resource "aws_lb" "webapp_lb" {
   name               = "webapp-lb"
   load_balancer_type = "application"
-  subnets            = aws_security_group.webapp_sg.id
+  subnets            = [aws_security_group.webapp_sg.id]
 }
 
 # Listen on 80 (HTTP) and forward to the target group

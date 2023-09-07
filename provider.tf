@@ -17,7 +17,7 @@ provider "aws" {
   default_tags {
     tags = {
       Coordinator = "Kamil Zaborowski"
-      Project     = "IaC-AWS-WebApp"
+      Project     = "IaC AWS WebApp"
     }
   }
 }
