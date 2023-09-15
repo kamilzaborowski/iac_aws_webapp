@@ -5,6 +5,7 @@ pipeline {
 // Trigger every 5 minute for code change
     triggers {
         cron('H/5 * * * * ')
+    }
 
     tools {
         terraform 'Terraform'
@@ -17,13 +18,15 @@ pipeline {
                 checkout scm
             }
         }
+    }
+
 // Get the code from the main branch and execute terraform commands
         stage('Deploy infrastrucure from Terraform code') {
             steps {
                 dir('iac_aws_webapp') {
                     // Get database credentials from Jenkins and assign to TF_VARS
                     withCredentials([usernamePassword(credentialsId: 'db_creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh 'export TF_VAR_USER=$USERNAME
+                        sh 'export TF_VAR_USER=$USERNAME'
                         sh 'export TF_VAR_PASS=$PASSWORD'
                     }
                     git branch: 'main', url: 'https://github.com/kamilzaborowski/iac_aws_webapp'
@@ -47,7 +50,6 @@ pipeline {
     post {
         always {
                 cleanWs()
-            }
         }
     }
-}   
+}
