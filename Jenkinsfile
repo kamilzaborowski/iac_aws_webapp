@@ -28,7 +28,7 @@ pipeline {
                     }
                     git branch: 'main', url: 'https://github.com/kamilzaborowski/iac_aws_webapp'
                     withAWS(credentials:'AWS',region: 'us-east-1') {
-                        sh 'terraform init && terraform apply -auto-approve -var db_name=webapp_db -var db_user=$TF_VAR_USER -var db_pass=$TF_VAR_PASS
+                        sh 'terraform init && terraform apply -auto-approve -var db_name=webapp_db -var db_user=$TF_VAR_USER -var db_pass=$TF_VAR_PASS'
                     }
                 }
             }
@@ -38,7 +38,7 @@ pipeline {
             steps {
                 dir('iac_aws_webapp') {
                     withAWS(credentials:'AWS',region: 'us-east-1') {
-                        sh 'terraform destroy -auto-approve -target aws_instance.server
+                        sh 'terraform destroy -auto-approve -target aws_instance.server'
                     }
                 }
             }
